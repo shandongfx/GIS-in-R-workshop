@@ -46,34 +46,46 @@ plot(gmap("walmart,stillwater,OK",type = "satellite") )
 plot(gmap("boomer lake,stillwater,OK",type = "satellite") )
 ```
 
-#################################
-# 3. spatial points
-##############################
-##############################
+## 3. spatial points
+### 3.1 generate spatial points
 
-## 3.1 generate spatial points
-# get a map of USA 
+```{r,fig.keep = 'last'}
+# get a map of OK 
 myMap <- gmap("Oklahoma",lonlat=TRUE)
+```
 
+```{r}
 # show the extent of this map (raster)
-extent(myMap)
+okExtent<- extent(myMap)
+okExtent
+```
 
+```{r}
 # generate 10 random points (longitude & latitude) within this extent
-myLongitude <- runif(n=10, min=-105.8468 ,max=-91.56882 )
-myLatitude <- runif(n=10, min=32.32012 ,max=38.17342 )
+myLongitude <- runif(n=10, min=okExtent[1] ,max=okExtent[2] )
+myLatitude <- runif(n=10, min=okExtent[3] ,max=okExtent[4] )
 
 # combine longitude and latitude by column
 coords <- cbind(myLongitude,myLatitude)
+head(coords)
+```
 
+```{r}
 # make the points spatial
 myPoints <- SpatialPoints(coords)
 
 # plot the points
-plot(myPoints)
+plot(myPoints) # but there is no background
+```
 
+```{r,fig.keep='last'}
 # add some background
 plot(myMap)
 plot(myPoints, add=TRUE, col="red")
+```
+
+
+
 
 ## 3.2 generate spatial points with attribute column
 # generate random attribute for the points

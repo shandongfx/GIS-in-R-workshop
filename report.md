@@ -15,8 +15,30 @@ Install and load libraries.
 # install.packages("raster")
 # install.packages("dismo")
 library("rgdal") # this package is the basis of analyzing GIS data in R; for example, it handle basis coordinate systems, it defines a lot of spatial data types
+```
+
+```
+## Warning: package 'rgdal' was built under R version 3.1.3
+```
+
+```
+## Warning: package 'sp' was built under R version 3.1.3
+```
+
+```r
 library("raster")
+```
+
+```
+## Warning: package 'raster' was built under R version 3.1.3
+```
+
+```r
 library("dismo")
+```
+
+```
+## Warning: package 'dismo' was built under R version 3.1.3
 ```
 
 ## 2. warm up 
@@ -51,6 +73,261 @@ plot(gmap("boomer lake,stillwater,OK",type = "satellite") )
 ```
 
 ![](report_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+
+## 3. spatial points
+### 3.1 generate spatial points
+
+
+```r
+# get a map of OK 
+myMap <- gmap("Oklahoma",lonlat=TRUE)
+```
+
+
+```r
+# show the extent of this map (raster)
+okExtent<- extent(myMap)
+okExtent
+```
+
+```
+## class       : Extent 
+## xmin        : -105.8468 
+## xmax        : -91.56882 
+## ymin        : 32.32014 
+## ymax        : 38.17344
+```
+
+
+```r
+# generate 10 random points (longitude & latitude) within this extent
+myLongitude <- runif(n=10, min=okExtent[1] ,max=okExtent[2] )
+myLatitude <- runif(n=10, min=okExtent[3] ,max=okExtent[4] )
+
+# combine longitude and latitude by column
+coords <- cbind(myLongitude,myLatitude)
+head(coords)
+```
+
+```
+##      myLongitude myLatitude
+## [1,]   -94.85098   32.49766
+## [2,]   -93.51579   36.53313
+## [3,]   -94.20641   36.80769
+## [4,]  -105.62351   34.41549
+## [5,]  -100.85339   33.08304
+## [6,]   -99.71311   33.04999
+```
+
+
+```r
+# make the points spatial
+myPoints <- SpatialPoints(coords)
+
+# plot the points
+plot(myPoints) # but there is no background
+```
+
+![](report_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+
+
+```r
+# add some background
+plot(myMap)
+plot(myPoints, add=TRUE, col="red")
+```
+
+![](report_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
+
+
+
+
+## 3.2 generate spatial points with attribute column
+# generate random attribute for the points
+myAtt <- sample(c("like","dislike"),10,replace=TRUE)
+
+# change myAtt to DataFrame
+myAtt <- as.data.frame(myAtt)
+
+# make spatial data frame (spatial points with attributes)
+myPoints <- SpatialPointsDataFrame(coords,as.data.frame(myAtt))
+
+# show the attribute of myPoints
+myPoints@data
+
+## 3.3 select a subset of points based on attributes
+myPoints_liked <- myPoints[myPoints$myAtt=="like", ]
+
+# plot all points and my liked points
+plot(myPoints)
+plot(myPoints_liked,add=T,col="red")
+
+## 3.4 save as shp file
+shapefile(myPoints_liked,"output_points.shp")
+
+##############################
+# 4. spatial polygons
+##############################
+
+## 4.1 build buffer of points, the unit of width depends on the geographic reference system of "myPoints"
+myBuffer <- buffer(myPoints,width=1)
+plot(myBuffer)
+
+# build buffer independently for each point
+myBuffer <- buffer(myPoints,width=1,dissolve=FALSE)
+plot(myBuffer)
+
+# plot them
+plot(myMap)
+plot(myPoints,add=T)
+plot(myBuffer,add=T)
+
+## 4.2 load existing polygons
+map_state <- shapefile("data/states.shp")
+
+# show the summary of the data
+summary(map_state)
+
+# show the structure of the data
+head(map_state@data, n=5)
+
+# plot the data
+plot(map_state)
+
+# show one colume
+map_state$STATE_NAME
+
+## 4.3 subset
+# only select Oklahoma
+map_ok <- map_state[map_state$STATE_NAME == "Oklahoma", ]
+plot(map_ok)
+
+# select states with high population density (population > 100000 and area < 10)
+# step 1: do the logic judgement
+selection <- map_state$POP2000 > 100000 & map_state$AREA < 10
+# step 2: subset
+map_selected <- map_state[selection,]
+
+# the following code shows the same results, but I will nor run it.
+#map_selected <- map_state[map_state$POP2000 > 100000 & map_state$AREA < 10,]
+
+# show all columns/fields/attributes of the selections
+map_selected@data
+plot(map_selected)
+
+# plot states with high population density
+plot(map_state)
+plot(map_selected,add=TRUE,col="red")
+
+## 4.4 save polygons
+shapefile(map_selected,"selected_states.shp")
+
+##############################
+# 5. spatial raster
+##############################
+
+## 5.1 read/write raster files
+# read one raster layer
+myLayer<- raster("data/bio_10m_bil/bio1.bil")
+plot(myLayer)
+
+# write one raster layer
+writeRaster(raster_ok,filename="ok_bio1.bil",format="EHdr")
+
+# load several raster layers
+# step 1 get a list of file names
+list.files("data/bio_10m_bil/") # we need to filter the names
+list.files("data/bio_10m_bil/",pattern=".bil") # the names are correct, but we need the full path
+list.files("data/bio_10m_bil/",pattern=".bil", full.names = TRUE) 
+myFiles <- list.files("data/bio_10m_bil/",pattern=".bil", full.names = TRUE) 
+
+# step 2 treat them as raster stack
+myLayers <- stack(myFiles)
+plot(myLayers)
+
+# save several raster layers
+formattedNames <- paste(names(myLayers),".bil", sep="")
+formattedNames
+writeRaster(myLayers,filename= formattedNames, format="EHdr", bylayer=TRUE)
+
+## 5.2 extraction by polygon
+# we only want to show Oklahoma, extract raster layer by polygon
+raster_ok <- mask(myLayer, map_ok) # we may get error if the reference systems are different
+
+## 5.3 projection
+# check their CRS
+crs(myLayer)
+crs(map_ok)
+
+# unify the CRS
+map_ok_new <- spTransform(map_ok, crs(myLayer))
+crs(map_ok_new)
+
+# extract raster by polygon 
+raster_ok <- crop( myLayer ,extent(map_ok_new) ) # first cut by a rectangle
+raster_ok <- mask(raster_ok, map_ok_new) # then cut by boundary
+plot(raster_ok)
+
+## 5.4 extract by point
+extract(raster_ok,myPoints)
+
+## 5.5 resample
+# we want the new layer to be 3 times coarser at each axis (9 times coarser)
+# read current resolution
+raster_ok
+nrow(raster_ok)
+ncol(raster_ok)
+extent(raster_ok)
+
+# define new resolution
+newRaster <- raster( nrow= nrow(raster_ok)/3 , ncol= ncol(raster_ok)/3 )
+
+# define extent
+extent(newRaster) <- extent(raster_ok)
+
+# fill the new layer with new values
+newRaster <- resample(x=raster_ok,y=newRaster,method='bilinear')
+plot(newRaster) # new layer seems coarser
+
+## 5.6 reclassify raster layer
+# we want to classify the world into two classes based on temperature, high > mean & low < mean
+myLayer<- raster("data/bio_10m_bil/bio1.bil")
+
+# values smaller than meanT becomes 1; values larger than meanT will be 2
+myMethod <- c(-Inf, 100, 1,  100, Inf, 2)
+myLayer_classified <- reclassify(myLayer,rcl= myMethod)
+plot(myLayer_classified)
+
+## 5.7 raster calculation
+# read precipitation data (Jan. ~ Dec.)
+ppp <- stack(list.files("data/prec_10m_bil/",pattern=".bil", full.names = TRUE) )
+plot(ppp)
+
+# calculate the difference
+tmp <- ppp[[1]] - ppp[[2]]
+
+# calculate the sum of the first and second layer
+total <- calc(ppp,fun=sum)
+plot(total)
+
+# the following code gives the same results
+total_new <- ppp[[1]]+ppp[[2]]+ppp[[3]]+ppp[[4]]+ppp[[5]]+ppp[[6]]+ppp[[7]]+ppp[[8]]+ppp[[9]]+ppp[[10]]+ppp[[11]]+ppp[[12]]
+plot(total_new - total)
+
+# histogram of one layer
+hist(ppp[[6]])
+
+# correlation between different layers
+pairs(ppp[[1:3]])
+
+# homework: what is the annual precipitation in Oklahoma?
+
+
+
+################################
+
+
+
 
 
 ## references
