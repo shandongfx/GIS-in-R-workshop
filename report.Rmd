@@ -9,6 +9,22 @@ output: html_document
 ## based on a workshop I tought in ? 
 
 
+## 1. basic
+Install and load libraries.
+
+
+```{r}
+# this package is the basis of analyzing GIS data in R
+# for example, it handle basis coordinate systems, it defines a lot of spatial data types
+install.packages("rgdal") 
+install.packages("raster")
+install.packages("dismo")
+library("rgdal")
+library("raster")
+library("dismo")
+
+```
+
 
 
 
