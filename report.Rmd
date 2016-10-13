@@ -12,42 +12,38 @@ output: html_document
 ## 1. basic
 Install and load libraries.
 
+```{r,echo=TRUE,message=FALSE}
 
-```{r}
-# this package is the basis of analyzing GIS data in R
-# for example, it handle basis coordinate systems, it defines a lot of spatial data types
-install.packages("rgdal") 
-install.packages("raster")
-install.packages("dismo")
-library("rgdal")
+# install.packages("rgdal") 
+# install.packages("raster")
+# install.packages("dismo")
+library("rgdal") # this package is the basis of analyzing GIS data in R; for example, it handle basis coordinate systems, it defines a lot of spatial data types
 library("raster")
 library("dismo")
 
 ```
 
-
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## 2. warm up 
+R is pretty fun to use, let's plot some maps from one line of code
+```{r,fig.keep = 'last',message=FALSE}
+require("XML")
+# get a map of OK, you could type text that used to search on Google Maps
+myMap <- gmap("oklahoma")
+raster::plot(myMap)
+```
+```{r,fig.keep = 'last'}
+# try different text
+plot(gmap("stillwater,OK")) # seems good
+```
+```{r,fig.keep = 'last'}
+# get a snapshot of Walmart (satellite image)
+plot(gmap("walmart,stillwater,OK",type = "satellite") )
+```
+```{r,fig.keep = 'last'}
+# get a snapshot of Boomer Lake (satellite image)
+plot(gmap("boomer lake,stillwater,OK",type = "satellite") )
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## references
+1. Spatial data in R: Using R as a GIS <http://pakillo.github.io/R-GIS-tutorial/>
