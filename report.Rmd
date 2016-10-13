@@ -5,6 +5,10 @@ date: "October 12, 2016"
 output: html_document
 ---
 
+# Work with GIS data in R
+## based on a workshop I tought in ? 
+
+
 
 
 
