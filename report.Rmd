@@ -85,14 +85,15 @@ plot(myPoints, add=TRUE, col="red")
 ```
 
 
+### 3.2 generate spatial points with attribute column
 
-
-## 3.2 generate spatial points with attribute column
+```{r}
 # generate random attribute for the points
-myAtt <- sample(c("like","dislike"),10,replace=TRUE)
+myAtt <- sample(c("presence","absence"),10,replace=TRUE)
 
 # change myAtt to DataFrame
 myAtt <- as.data.frame(myAtt)
+head(myAtt)
 
 # make spatial data frame (spatial points with attributes)
 myPoints <- SpatialPointsDataFrame(coords,as.data.frame(myAtt))
@@ -100,35 +101,55 @@ myPoints <- SpatialPointsDataFrame(coords,as.data.frame(myAtt))
 # show the attribute of myPoints
 myPoints@data
 
-## 3.3 select a subset of points based on attributes
-myPoints_liked <- myPoints[myPoints$myAtt=="like", ]
+```
 
-# plot all points and my liked points
+
+
+### 3.3 select a subset of points based on attributes
+```{r}
+# This is like subsetting a dataframe
+myPoints_presence <- myPoints[myPoints$myAtt=="presence", ]
+
+# plot the previously selected points as red
 plot(myPoints)
-plot(myPoints_liked,add=T,col="red")
+plot(myPoints_presence,add=T,col="red")
 
-## 3.4 save as shp file
-shapefile(myPoints_liked,"output_points.shp")
+```
 
-##############################
-# 4. spatial polygons
-##############################
+### 3.4 save our selected file as a shape file
+```{r}
+# the 1st parameter is the object, the 2nd parameter is the path and file name
+shapefile(myPoints_presence,filename="temp/output.shp",overwrite=TRUE)
+#file.exists("output.shp")
+```
 
-## 4.1 build buffer of points, the unit of width depends on the geographic reference system of "myPoints"
+## 4. spatial polygons
+
+### 4.1 build buffer of points, the unit of width depends on the geographic reference system of "myPoints"
+```{r}
+# build a dissolved buffer
 myBuffer <- buffer(myPoints,width=1)
+length(myBuffer)
 plot(myBuffer)
+
 
 # build buffer independently for each point
 myBuffer <- buffer(myPoints,width=1,dissolve=FALSE)
+length(myBuffer)
 plot(myBuffer)
 
 # plot them
 plot(myMap)
 plot(myPoints,add=T)
 plot(myBuffer,add=T)
+```
 
-## 4.2 load existing polygons
-map_state <- shapefile("data/states.shp")
+
+
+### 4.2 load existing polygons (data from <http://www.diva-gis.org/Data>)
+```{r}
+# use the shapefile function, which is used for export if the object is specified
+map_state <- shapefile("data/USA_adm1.shp")
 
 # show the summary of the data
 summary(map_state)
@@ -136,70 +157,77 @@ summary(map_state)
 # show the structure of the data
 head(map_state@data, n=5)
 
+# show one colume
+map_state$NAME_1
+
 # plot the data
 plot(map_state)
+```
 
-# show one colume
-map_state$STATE_NAME
 
-## 4.3 subset
+### 4.3 subset
+```{r}
 # only select Oklahoma
-map_ok <- map_state[map_state$STATE_NAME == "Oklahoma", ]
+map_ok <- map_state[map_state$NAME_1 == "Oklahoma", ]
 plot(map_ok)
 
-# select states with high population density (population > 100000 and area < 10)
+# select states large area (> 30)
 # step 1: do the logic judgement
-selection <- map_state$POP2000 > 100000 & map_state$AREA < 10
+selection <- map_state$Shape_Area > 30
 # step 2: subset
 map_selected <- map_state[selection,]
 
 # the following code shows the same results, but I will nor run it.
-#map_selected <- map_state[map_state$POP2000 > 100000 & map_state$AREA < 10,]
+#map_selected <- map_state[map_state$Shape_Area < 10,]
 
 # show all columns/fields/attributes of the selections
 map_selected@data
 plot(map_selected)
+```
 
-# plot states with high population density
-plot(map_state)
-plot(map_selected,add=TRUE,col="red")
+### 4.4 save polygons
+```{r}
+shapefile(map_selected,"temp/selected_states.shp",overwrite=TRUE)
 
-## 4.4 save polygons
-shapefile(map_selected,"selected_states.shp")
+```
 
-##############################
-# 5. spatial raster
-##############################
 
-## 5.1 read/write raster files
+## 5. spatial raster
+
+### 5.1 read/write raster files (data from <http://www.worldclim.org>)
+```{r}
 # read one raster layer
-myLayer<- raster("data/bio_10m_bil/bio1.bil")
+myLayer<- raster("data/bio1.bil")
 plot(myLayer)
-
-# write one raster layer
-writeRaster(raster_ok,filename="ok_bio1.bil",format="EHdr")
+# write one raster layer (not run)
+# writeRaster(myLayer,filename="temp/ok_bio1.bil",format="EHdr",overwrite=TRUE)
 
 # load several raster layers
 # step 1 get a list of file names
-list.files("data/bio_10m_bil/") # we need to filter the names
-list.files("data/bio_10m_bil/",pattern=".bil") # the names are correct, but we need the full path
-list.files("data/bio_10m_bil/",pattern=".bil", full.names = TRUE) 
-myFiles <- list.files("data/bio_10m_bil/",pattern=".bil", full.names = TRUE) 
+list.files("data/") # we need to filter the names
+list.files("data/",pattern=".bil") # the names are correct, but we need the full path
+list.files("data/",pattern=".bil", full.names = TRUE) # the full name give you a relative path to current working directory
+myFiles <- list.files("data/",pattern=".bil", full.names = TRUE) 
 
 # step 2 treat them as raster stack
 myLayers <- stack(myFiles)
 plot(myLayers)
 
 # save several raster layers
-formattedNames <- paste(names(myLayers),".bil", sep="")
+formattedNames <- paste("temp/",names(myLayers),".bil", sep="")
 formattedNames
-writeRaster(myLayers,filename= formattedNames, format="EHdr", bylayer=TRUE)
+# not run
+# writeRaster(myLayers,filename= formattedNames, format="EHdr", bylayer=TRUE)
+```
 
-## 5.2 extraction by polygon
+### 5.2 extraction by polygon
+```{r}
 # we only want to show Oklahoma, extract raster layer by polygon
 raster_ok <- mask(myLayer, map_ok) # we may get error if the reference systems are different
+```
 
-## 5.3 projection
+### 5.3 projection
+```{r}
 # check their CRS
 crs(myLayer)
 crs(map_ok)
@@ -213,10 +241,15 @@ raster_ok <- crop( myLayer ,extent(map_ok_new) ) # first cut by a rectangle
 raster_ok <- mask(raster_ok, map_ok_new) # then cut by boundary
 plot(raster_ok)
 
-## 5.4 extract by point
-extract(raster_ok,myPoints)
+```
 
-## 5.5 resample
+### 5.4 extract by point
+```{r}
+extract(raster_ok,myPoints)
+```
+
+### 5.5 resample
+```{r}
 # we want the new layer to be 3 times coarser at each axis (9 times coarser)
 # read current resolution
 raster_ok
@@ -233,41 +266,45 @@ extent(newRaster) <- extent(raster_ok)
 # fill the new layer with new values
 newRaster <- resample(x=raster_ok,y=newRaster,method='bilinear')
 plot(newRaster) # new layer seems coarser
+```
 
-## 5.6 reclassify raster layer
+### 5.6 reclassify raster layer
+```{r}
 # we want to classify the world into two classes based on temperature, high > mean & low < mean
-myLayer<- raster("data/bio_10m_bil/bio1.bil")
+myLayer<- raster("data/bio1.bil")
 
 # values smaller than meanT becomes 1; values larger than meanT will be 2
 myMethod <- c(-Inf, 100, 1,  100, Inf, 2)
 myLayer_classified <- reclassify(myLayer,rcl= myMethod)
 plot(myLayer_classified)
+```
 
-## 5.7 raster calculation
-# read precipitation data (Jan. ~ Dec.)
-ppp <- stack(list.files("data/prec_10m_bil/",pattern=".bil", full.names = TRUE) )
-plot(ppp)
+### 5.7 raster calculation
+```{r}
+# read precipitation data 
+wet <- raster("data/bio13.bil") # precipitation of wettest month
+dry <- raster("data/bio14.bil") # precipitation of driest month
+plot(stack(wet,dry))
 
 # calculate the difference
-tmp <- ppp[[1]] - ppp[[2]]
+diff <- wet - dry
+#plot(diff)
 
-# calculate the sum of the first and second layer
-total <- calc(ppp,fun=sum)
-plot(total)
+# calculate the mean of the two month
+twoLayers <- stack(wet,dry)
+meanPPT <- calc(twoLayers,fun=mean)
+#plot(meanPPT)
 
 # the following code gives the same results
-total_new <- ppp[[1]]+ppp[[2]]+ppp[[3]]+ppp[[4]]+ppp[[5]]+ppp[[6]]+ppp[[7]]+ppp[[8]]+ppp[[9]]+ppp[[10]]+ppp[[11]]+ppp[[12]]
-plot(total_new - total)
+meanPPT2 <-  (wet + dry)/2
 
 # histogram of one layer
-hist(ppp[[6]])
+hist(twoLayers[[1]])
 
 # correlation between different layers
-pairs(ppp[[1:3]])
+pairs(twoLayers[[1:2]])
 
-# homework: what is the annual precipitation in Oklahoma?
-
-
+```
 
 ################################
 
